@@ -1,0 +1,23 @@
+{
+  "layout" : [
+    "gpt.status",
+    "gpt.usage",
+    "agent.speed",
+    "tokens.today",
+    "pomodoro",
+    "system.controls"
+  ],
+  "name" : "专注 AI",
+  "schema" : "goodtouchbar-layout",
+  "schemaVersion" : 2,
+  "menuLayout" : [
+    "gpt.usage",
+    "gpt.status",
+    "agent.speed",
+    "tokens.today"
+  ],
+  "thresholds" : {
+    "system.cpu" : [ 80, 95 ],
+    "system.cpuTemperature" : [ 85, 95 ]
+  }
+}

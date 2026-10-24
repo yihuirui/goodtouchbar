@@ -1,0 +1,38 @@
+# Swift and local build output
+.build/
+.build*/
+DerivedData/
+build/
+dist/
+*.app/
+*.xcarchive/
+*.dSYM/
+
+# Local logs and runtime state
+*.log
+*.log.*
+/logs/
+/run-logs/
+.codex-adaptive-agents/
+
+# Editor and OS noise
+.DS_Store
+*.swp
+*.tmp
+
+# Root-level local secrets/configuration. Keep source JSON fixtures trackable.
+/.env
+/.env.*
+!/.env.example
+/credentials.json
+/local-credentials.json
+/secrets.json
+/local-config.json
+/*.p12
+/*.mobileprovision
+/*.privatekey
+/id_rsa
+/id_ed25519
+
+# Local execution and handoff record
+/DEVELOPMENT.md

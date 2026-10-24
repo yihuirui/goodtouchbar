@@ -1,0 +1,28 @@
+{
+  "layout" : [
+    "system.cpu",
+    "system.memory",
+    "system.cpuTemperature",
+    "system.gpuTemperature",
+    "system.fans",
+    "system.controls"
+  ],
+  "name" : "系统监控",
+  "schema" : "goodtouchbar-layout",
+  "schemaVersion" : 2,
+  "menuLayout" : [
+    "system.cpu",
+    "system.memory",
+    "system.pressure",
+    "system.swap",
+    "system.cpuTemperature",
+    "system.controls"
+  ],
+  "thresholds" : {
+    "system.cpu" : [ 80, 95 ],
+    "system.memory" : [ 80, 90 ],
+    "system.cpuTemperature" : [ 85, 95 ],
+    "system.gpuTemperature" : [ 75, 85 ],
+    "system.fans" : [ 80, 95 ]
+  }
+}
