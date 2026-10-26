@@ -13,7 +13,7 @@ import Foundation
 /// 避免改了 plist 忘了改这里。
 public enum AppBuild {
     /// 与 `Source/Info.plist` 的 `CFBundleVersion` 保持一致。
-    public static let fallback = 3
+    public static let fallback = 4
 
     public static let current: Int = {
         if let text = Bundle.main.infoDictionary?["CFBundleVersion"] as? String,

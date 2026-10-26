@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="${0:A:h}"
-RELEASE_VERSION="0.3.0"
-BUILD_NUMBER="3"
+RELEASE_VERSION="0.3.1"
+BUILD_NUMBER="4"
 BUILD_CONFIGURATION="${BUILD_CONFIGURATION:-release}"
 ARCH="$(/usr/bin/uname -m)"
 OPEN_APP=0
@@ -27,7 +27,7 @@ case "$ARCH" in arm64|x86_64) ;; *) print -u2 "不支持的目标架构：$ARCH"
 TARGET_TRIPLE="${TARGET_TRIPLE:-$ARCH-apple-macosx13.0}"
 [[ "$TARGET_TRIPLE" == "$ARCH-apple-macosx13.0" ]] || { print -u2 "TARGET_TRIPLE 与 --arch 不匹配"; exit 64; }
 
-TASK_BUILD_DIR="${BUILD_SCRATCH_PATH:-$(mktemp -d "/private/tmp/goodtouchbar-030-${ARCH}-build.XXXXXX")}" 
+TASK_BUILD_DIR="${BUILD_SCRATCH_PATH:-$(mktemp -d "/private/tmp/goodtouchbar-031-${ARCH}-build.XXXXXX")}" 
 TASK_MODULE_CACHE="${TASK_MODULE_CACHE:-$TASK_BUILD_DIR/module-cache}"
 DIST_DIR="${DIST_OUTPUT_DIR:-$ROOT_DIR/dist}"
 APP_DIR="${APP_OUTPUT_DIR:-$DIST_DIR/$RELEASE_VERSION/$ARCH/goodtouchbar.app}"

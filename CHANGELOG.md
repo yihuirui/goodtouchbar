@@ -2,6 +2,12 @@
 
 User-visible changes for each release are listed here.
 
+## 0.3.1 (build 4) — experimental preview
+
+- Refine the native status details hierarchy using Hallmark and Impeccable design guidance: quieter grouping, clearer quota and token information, and more distinct WorkBuddy actions.
+- Preserve existing data sources, refresh cadence, action confirmations, and hardware capability checks.
+- Keep design-tool downloads outside the published source and application packages; no new runtime dependency is required.
+
 ## 0.3.0 (build 3) — experimental preview
 
 - Replace the primary status-item text menu with a native details popover: separate five-hour and weekly quota cards, today's token usage, AI state, and a compact system overview.

@@ -2,12 +2,12 @@
 set -euo pipefail
 ROOT="${0:A:h:h}"
 cd "$ROOT"
-PREVIEW_APP="${STATUS_DETAILS_PREVIEW_APP:-/private/tmp/goodtouchbar-030-preview/GoodTouchBarPreviewFixed.app}"
-BUILD_ROOT="${STATUS_DETAILS_PREVIEW_BUILD_ROOT:-/private/tmp/goodtouchbar-030-preview/build}"
+PREVIEW_APP="${STATUS_DETAILS_PREVIEW_APP:-/private/tmp/goodtouchbar-031-preview/GoodTouchBarPreviewFixed.app}"
+BUILD_ROOT="${STATUS_DETAILS_PREVIEW_BUILD_ROOT:-/private/tmp/goodtouchbar-031-preview/build}"
 BUNDLE_ID="${STATUS_DETAILS_PREVIEW_BUNDLE_ID:-io.github.yihuirui.goodtouchbar.preview.fixed}"
 [[ ! -e "$PREVIEW_APP" ]] || { print -u2 "拒绝覆盖已有预览应用：$PREVIEW_APP"; exit 2; }
-case "$PREVIEW_APP" in /private/tmp/goodtouchbar-030-preview/*) ;; *) print -u2 "预览应用必须位于指定临时目录"; exit 2 ;; esac
-case "$BUILD_ROOT" in /private/tmp/goodtouchbar-030-preview/*) ;; *) print -u2 "预览构建目录必须位于指定临时目录"; exit 2 ;; esac
+case "$PREVIEW_APP" in /private/tmp/goodtouchbar-031-preview/*) ;; *) print -u2 "预览应用必须位于指定临时目录"; exit 2 ;; esac
+case "$BUILD_ROOT" in /private/tmp/goodtouchbar-031-preview/*) ;; *) print -u2 "预览构建目录必须位于指定临时目录"; exit 2 ;; esac
 mkdir -p "$BUILD_ROOT/module-cache"
 TASK_BUILD_DIR="$BUILD_ROOT"
 export TASK_BUILD_DIR
@@ -34,8 +34,8 @@ cat > "$PREVIEW_APP/Contents/Info.plist" <<PLIST
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>goodtouchbar Preview</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.3.0-preview</string>
-    <key>CFBundleVersion</key><string>3</string>
+    <key>CFBundleShortVersionString</key><string>0.3.1-preview</string>
+    <key>CFBundleVersion</key><string>4</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>NSHighResolutionCapable</key><true/>
 </dict>

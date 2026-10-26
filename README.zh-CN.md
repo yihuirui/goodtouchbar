@@ -1,6 +1,6 @@
 # goodtouchbar
 
-**版本 0.3.0 · build 3 · 实验预览版**
+**版本 0.3.1 · build 4 · 实验预览版**
 
 goodtouchbar 是面向 Intel 与 Apple 芯片 Mac 的实验性 macOS 工具，将 AI 活动、部分系统指标和常用控制放入可配置的菜单与受支持硬件上的 Touch Bar。Touch Bar 是否存在取决于具体机型，不能只根据 Intel 或 Apple 芯片架构判断。源码在公开仓库维护，预览安装包通过 GitHub Releases 分发。
 
@@ -8,7 +8,7 @@ goodtouchbar 是面向 Intel 与 Apple 芯片 Mac 的实验性 macOS 工具，�
 
 ## 功能
 
-- **状态详情：**左键点击主状态项，查看额度卡片、今日 Token、AI 状态和系统概览；底部工具栏保持可见，正文可滚动；右键或面板中的“更多”打开完整操作菜单。重试和硬件操作沿用既有确认与机型能力检查。
+- **状态详情：**左键点击主状态项，查看清晰分组的额度、今日 Token、AI 状态和系统概览；健康额度使用中性文字，低额度保留明确警告；WorkBuddy 操作按当前监控状态突出可用操作；底部工具栏保持可见，正文可滚动；右键或面板中的“更多”打开完整操作菜单。重试和硬件操作沿用既有确认与机型能力检查。
 
 - **系统控制：**轻点 Touch Bar 项目打开原生控制面板；长按可直接切换静音。面板提供主输出音量滑块、静音、播放/暂停和正在运行的应用列表。播放/暂停发送 macOS 系统定义的媒体事件。点击该按钮需要“辅助功能”权限；macOS 会请求授权，未授权时面板提供打开辅助功能设置的入口。播放器可能不响应该事件，且尚未在实体目标 Mac 上验收播放控制效果。
 - **AI 活动：**显示从本地近期 rollout 记录读取的 Codex 额度、通过 OpenToken 获取的可选 Token 总量、从近期本地会话事件估算的 AI 输出速度，以及 WorkBuddy 活动状态。Codex rollout 更新可能延迟，因此额度数据可能过时。
@@ -56,7 +56,7 @@ Intel 构建请使用 `TEST_ARCH=x86_64` 和 `--arch x86_64`。本机原生构�
 
 ## 项目状态
 
-0.3.0 / build 3 已在这台 Apple 芯片开发机上通过原生 arm64 和 Rosetta x86_64 公共测试，并通过详情状态、操作路由、无障碍及布局检查。截图预览使用示例数据，离屏布局预览不验证系统毛玻璃合成效果。此前 0.2.0 的 M1 Pro 只读采样获得了 CPU/内存数据、M1 CPU 热区温度及两个风扇 RPM 读数；这不等于原生 Intel 硬件已验收。0.1.0 / build 1 的准备记录保留在 [CHANGELOG.md](CHANGELOG.md)。本地检查和 GitHub 发布是不同状态，自动化检查也不能证明实体 Touch Bar 呈现、播放器响应、传感器覆盖或风扇写入效果。M1/M2 Touch Bar 机型举例来自 Apple 技术规格，不代表本应用已在这些设备验收。安装包为 ad-hoc 签名，尚未公证；请查看 [Release 页面](https://github.com/yihuirui/goodtouchbar/releases)了解发布状态。
+0.3.1 / build 4 已在这台 Apple 芯片开发机上通过原生 arm64 和 Rosetta x86_64 公共测试，并通过详情状态、操作路由、无障碍及布局检查。截图预览使用示例数据，离屏布局预览不验证系统毛玻璃合成效果。此前 0.2.0 的 M1 Pro 只读采样获得了 CPU/内存数据、M1 CPU 热区温度及两个风扇 RPM 读数；这不等于原生 Intel 硬件已验收。0.1.0 / build 1 的准备记录保留在 [CHANGELOG.md](CHANGELOG.md)。本地检查和 GitHub 发布是不同状态，自动化检查也不能证明实体 Touch Bar 呈现、播放器响应、传感器覆盖或风扇写入效果。M1/M2 Touch Bar 机型举例来自 Apple 技术规格，不代表本应用已在这些设备验收。安装包为 ad-hoc 签名，尚未公证；请查看 [Release 页面](https://github.com/yihuirui/goodtouchbar/releases)了解发布状态。
 
 ## 参与贡献
 

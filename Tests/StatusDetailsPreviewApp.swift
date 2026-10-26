@@ -70,7 +70,7 @@ struct StatusDetailsPreviewApp {
             quotaAwaitingReset: false,
             quotaUpdatedText: "更新于刚刚",
             tokenShortText: "12万",
-            tokenExactText: "精确计数 123,456",
+            tokenExactText: "完整值 123,456",
             tokenUpdatedText: "更新于刚刚",
             tokenIsStale: false,
             chatGPT: StatusDetailsPresentation.service(
@@ -88,7 +88,7 @@ struct StatusDetailsPreviewApp {
                 .init(symbol: "thermometer.medium", title: "温度", value: "54°C", accessibilityLabel: "CPU 温度 54°C"),
                 .init(symbol: "fan", title: "风扇", value: "1,420 RPM", accessibilityLabel: "风扇转速 1,420 RPM"),
             ],
-            fanNote: "风扇只读 · 只显示已采样转速"
+            fanNote: "风扇只读，只显示已采样转速"
         )
     }
 
@@ -103,7 +103,7 @@ struct StatusDetailsPreviewApp {
             quotaAwaitingReset: false,
             quotaUpdatedText: "更新于 8 天前，数据已超过有效期",
             tokenShortText: "9877万",
-            tokenExactText: "精确计数 98,765,432 · 长数字仍独立显示",
+            tokenExactText: "完整值 98,765,432",
             tokenUpdatedText: "更新于 8 天前",
             tokenIsStale: true,
             chatGPT: StatusDetailsPresentation.service(
@@ -118,7 +118,7 @@ struct StatusDetailsPreviewApp {
             canUpdateWorkBuddy: true,
             canStopWorkBuddy: true,
             metrics: [],
-            fanNote: "风扇状态未知 · 未采集转速不代表设备没有风扇"
+            fanNote: "风扇状态未知，未采集转速不代表设备没有风扇"
         )
     }
 }

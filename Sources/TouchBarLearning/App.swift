@@ -732,11 +732,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSTouchB
 
         let fanNote: String
         if capabilitiesCanReadFansAsReadOnly {
-            fanNote = "风扇只读 · 只显示已采样转速；未知读数不代表没有风扇"
+            fanNote = "风扇只读，只显示已采样转速；未知读数不代表没有风扇"
         } else if deviceCapabilities.processArchitecture == "x86_64", deviceCapabilities.hostSupportsArm64 == false {
-            fanNote = "Intel 风扇读数只读 · 未采样时状态未知"
+            fanNote = "Intel 风扇读数只读，未采样时状态未知"
         } else {
-            fanNote = "风扇能力未知 · 仅显示已有只读读数"
+            fanNote = "风扇能力未知，仅显示已有只读读数"
         }
 
         let quotaUpdatedText: String
@@ -759,7 +759,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSTouchB
             quotaAwaitingReset: quota.windows.isEmpty && quota.awaitingReset,
             quotaUpdatedText: quotaUpdatedText,
             tokenShortText: StatusDetailsPresentation.shortTokenText(token.tokens),
-            tokenExactText: token.tokens.map { "精确计数 \(StatusDetailsPresentation.exactTokenText($0))" } ?? "暂无精确计数",
+            tokenExactText: token.tokens.map { "完整值 \(StatusDetailsPresentation.exactTokenText($0))" } ?? "暂无数据",
             tokenUpdatedText: tokenUpdatedText,
             tokenIsStale: token.tokens != nil && token.stale,
             chatGPT: chatGPT,

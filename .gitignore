@@ -36,3 +36,6 @@ dist/
 
 # Local execution and handoff record
 /DEVELOPMENT.md
+
+# Local design-skill reference downloads
+/.design-tools/

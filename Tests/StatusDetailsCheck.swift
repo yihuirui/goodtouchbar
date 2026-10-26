@@ -15,7 +15,7 @@ struct StatusDetailsCheck {
         check(StatusDetailsPresentation.quotaText(68, stale: false).contains("剩余 68%"), "quota card identifies its value as remaining")
         check(StatusDetailsPresentation.quotaPrimaryText(68, stale: false) == "剩余 68%", "fresh quota uses a large remaining value")
         check(StatusDetailsPresentation.quotaPrimaryText(21, stale: true) == "21%", "stale quota value stays concise")
-        check(StatusDetailsPresentation.quotaSecondaryText(21, stale: true, awaitingReset: false).contains("已过期"), "stale quota has a historical label")
+        check(StatusDetailsPresentation.quotaSecondaryText(21, stale: true, awaitingReset: false) == "历史额度，已过期", "stale quota has a historical label")
         check(StatusDetailsPresentation.quotaSecondaryText(nil, stale: false, awaitingReset: true) == "额度待更新", "missing reset data has a neutral label")
         check(StatusDetailsPresentation.shortTokenText(123_456) == "12万", "short token value is readable")
         check(StatusDetailsPresentation.exactTokenText(123_456).filter(\.isNumber) == "123456", "full token value is available")
@@ -39,18 +39,35 @@ struct StatusDetailsCheck {
         check(!StatusDetailsPresentation.canPerformWorkBuddyAction("stop", state: "idle", title: "未监控", commandInFlight: false), "stop disabled before monitoring starts")
         check(!StatusDetailsPresentation.canPerformWorkBuddyAction("update", state: "running", title: "进行中", commandInFlight: true), "all commands disabled during an operation")
         check(!StatusDetailsPresentation.canPerformWorkBuddyAction("start", state: "future-state", title: "未知", commandInFlight: false), "unknown state does not enable start")
+        check(StatusDetailsPresentation.preferredWorkBuddyAction(canStart: true, canUpdate: true, canStop: false) == "start", "unmonitored WorkBuddy emphasizes the available start action")
+        check(StatusDetailsPresentation.preferredWorkBuddyAction(canStart: false, canUpdate: true, canStop: true) == "update", "active or recoverable WorkBuddy emphasizes update")
+        check(StatusDetailsPresentation.preferredWorkBuddyAction(canStart: false, canUpdate: false, canStop: false) == nil, "busy WorkBuddy has no emphasized action")
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            let labelContrast = contrastRatio(.labelColor, against: .windowBackgroundColor, appearance: appearance)
+            let secondaryContrast = contrastRatio(.secondaryLabelColor, against: .windowBackgroundColor, appearance: appearance)
+            check(labelContrast >= 4.5, "\(appearance.rawValue) primary text contrast is \(String(format: "%.2f", labelContrast)):1")
+            print("INFO: \(appearance.rawValue) secondaryLabelColor contrast is \(String(format: "%.2f", secondaryContrast)):1; detail copy uses labelColor")
+        }
         check(StatusDetailsPopoverController.isEscapeKeyCode(53), "Escape key is recognized")
         check(!StatusDetailsPopoverController.isEscapeKeyCode(36), "other keys do not dismiss the popover")
 
         let light = healthyFixture()
         let dark = longUnknownFixture()
-        verifyViewAndActions(light)
-        verifyViewAndActions(dark)
-        verifyViewAndActions(unmonitoredFixture())
-        verifyViewAndActions(awaitingResetFixture())
+        let low = lowQuotaFixture()
+        let maxToken = maximumTokenFixture()
+        let unavailable = actionUnavailableFixture()
+        verifyViewAndActions(light, appearance: .aqua)
+        verifyViewAndActions(dark, appearance: .darkAqua)
+        verifyViewAndActions(low, appearance: .darkAqua)
+        verifyViewAndActions(maxToken, appearance: .darkAqua)
+        verifyViewAndActions(unmonitoredFixture(), appearance: .aqua)
+        verifyViewAndActions(awaitingResetFixture(), appearance: .darkAqua)
+        verifyViewAndActions(unavailable, appearance: .aqua)
         if ProcessInfo.processInfo.environment["STATUS_DETAILS_CAPTURE_PREVIEWS"] == "1" {
             render(light, appearance: .aqua, name: "status-details-light-healthy.png")
             render(dark, appearance: .darkAqua, name: "status-details-dark-long-unknown.png")
+            render(low, appearance: .darkAqua, name: "status-details-dark-low-quota.png")
+            render(maxToken, appearance: .darkAqua, name: "status-details-dark-maximum-token.png")
             render(unmonitoredFixture(), appearance: .aqua, name: "status-details-light-unmonitored.png")
             render(awaitingResetFixture(), appearance: .darkAqua, name: "status-details-dark-awaiting-reset.png")
         } else {
@@ -75,7 +92,7 @@ struct StatusDetailsCheck {
             quotaAwaitingReset: false,
             quotaUpdatedText: "更新于刚刚",
             tokenShortText: "12万",
-            tokenExactText: "精确计数 123,456",
+            tokenExactText: "完整值 123,456",
             tokenUpdatedText: "更新于刚刚",
             tokenIsStale: false,
             chatGPT: StatusDetailsPresentation.service(name: "ChatGPT", state: "running", sourceTitle: "进行中", detail: "正在生成回答"),
@@ -89,7 +106,7 @@ struct StatusDetailsCheck {
                 .init(symbol: "thermometer.medium", title: "温度", value: "54°C", accessibilityLabel: "CPU 温度 54°C"),
                 .init(symbol: "fan", title: "风扇", value: "1,420 RPM", accessibilityLabel: "风扇转速 1,420 RPM"),
             ],
-            fanNote: "风扇只读 · 只显示已采样转速"
+            fanNote: "风扇只读，只显示已采样转速"
         )
     }
 
@@ -104,7 +121,7 @@ struct StatusDetailsCheck {
             quotaAwaitingReset: false,
             quotaUpdatedText: "更新于 8 天前，数据已超过有效期",
             tokenShortText: "9877万",
-            tokenExactText: "精确计数 98,765,432 · 长数字仍独立显示",
+            tokenExactText: "完整值 98,765,432",
             tokenUpdatedText: "更新于 8 天前",
             tokenIsStale: true,
             chatGPT: StatusDetailsPresentation.service(
@@ -119,7 +136,7 @@ struct StatusDetailsCheck {
             canUpdateWorkBuddy: true,
             canStopWorkBuddy: true,
             metrics: [],
-            fanNote: "风扇只读 · 未采集读数时保持未知，不推断设备有无风扇"
+            fanNote: "风扇只读，未采集读数时保持未知，不推断设备有无风扇"
         )
     }
 
@@ -134,7 +151,7 @@ struct StatusDetailsCheck {
             quotaAwaitingReset: false,
             quotaUpdatedText: "暂未获取数据",
             tokenShortText: "--",
-            tokenExactText: "暂无精确计数",
+            tokenExactText: "暂无数据",
             tokenUpdatedText: "暂未采集",
             tokenIsStale: false,
             chatGPT: StatusDetailsPresentation.service(name: "ChatGPT", state: "idle", sourceTitle: "待命", detail: "没有检测到最近任务"),
@@ -143,7 +160,7 @@ struct StatusDetailsCheck {
             canUpdateWorkBuddy: true,
             canStopWorkBuddy: false,
             metrics: [],
-            fanNote: "风扇能力未知 · 仅显示已有只读读数"
+            fanNote: "风扇能力未知，仅显示已有只读读数"
         )
     }
 
@@ -169,7 +186,76 @@ struct StatusDetailsCheck {
         )
     }
 
-    private static func verifyViewAndActions(_ snapshot: StatusDetailsSnapshot) {
+    private static func lowQuotaFixture() -> StatusDetailsSnapshot {
+        let base = healthyFixture()
+        return StatusDetailsSnapshot(
+            modeLabel: base.modeLabel,
+            quotaWindows: [
+                .init(title: "5 小时", remainingPercent: 18, resetText: "重置于 2 小时后"),
+                .init(title: "7 天", remainingPercent: 43, resetText: "重置于 4 天后"),
+            ],
+            quotaIsStale: false,
+            quotaAwaitingReset: false,
+            quotaUpdatedText: "更新于刚刚",
+            tokenShortText: base.tokenShortText,
+            tokenExactText: base.tokenExactText,
+            tokenUpdatedText: base.tokenUpdatedText,
+            tokenIsStale: false,
+            chatGPT: base.chatGPT,
+            workBuddy: base.workBuddy,
+            canStartWorkBuddy: base.canStartWorkBuddy,
+            canUpdateWorkBuddy: base.canUpdateWorkBuddy,
+            canStopWorkBuddy: base.canStopWorkBuddy,
+            metrics: base.metrics,
+            fanNote: base.fanNote
+        )
+    }
+
+    private static func maximumTokenFixture() -> StatusDetailsSnapshot {
+        let base = longUnknownFixture()
+        return StatusDetailsSnapshot(
+            modeLabel: base.modeLabel,
+            quotaWindows: base.quotaWindows,
+            quotaIsStale: base.quotaIsStale,
+            quotaAwaitingReset: base.quotaAwaitingReset,
+            quotaUpdatedText: base.quotaUpdatedText,
+            tokenShortText: StatusDetailsPresentation.shortTokenText(Int64.max),
+            tokenExactText: "完整值 \(StatusDetailsPresentation.exactTokenText(Int64.max))",
+            tokenUpdatedText: "更新于 8 天前",
+            tokenIsStale: true,
+            chatGPT: base.chatGPT,
+            workBuddy: base.workBuddy,
+            canStartWorkBuddy: base.canStartWorkBuddy,
+            canUpdateWorkBuddy: base.canUpdateWorkBuddy,
+            canStopWorkBuddy: base.canStopWorkBuddy,
+            metrics: base.metrics,
+            fanNote: base.fanNote
+        )
+    }
+
+    private static func actionUnavailableFixture() -> StatusDetailsSnapshot {
+        let base = healthyFixture()
+        return StatusDetailsSnapshot(
+            modeLabel: base.modeLabel,
+            quotaWindows: base.quotaWindows,
+            quotaIsStale: base.quotaIsStale,
+            quotaAwaitingReset: base.quotaAwaitingReset,
+            quotaUpdatedText: base.quotaUpdatedText,
+            tokenShortText: base.tokenShortText,
+            tokenExactText: base.tokenExactText,
+            tokenUpdatedText: base.tokenUpdatedText,
+            tokenIsStale: base.tokenIsStale,
+            chatGPT: base.chatGPT,
+            workBuddy: base.workBuddy,
+            canStartWorkBuddy: false,
+            canUpdateWorkBuddy: false,
+            canStopWorkBuddy: false,
+            metrics: base.metrics,
+            fanNote: base.fanNote
+        )
+    }
+
+    private static func verifyViewAndActions(_ snapshot: StatusDetailsSnapshot, appearance: NSAppearance.Name) {
         let controller = StatusDetailsViewController(snapshot: snapshot, opaquePreviewBackground: true)
         let fittedHeight = controller.preferredContentHeight(maxHeight: 620)
         if let scrollView = descendants(of: controller.view).first(where: { $0.identifier?.rawValue == "details.scrollView" }) as? NSScrollView {
@@ -177,12 +263,19 @@ struct StatusDetailsCheck {
             scrollView.scrollerStyle = .legacy
             scrollView.autohidesScrollers = false
         }
-        let root = previewHost(controller, appearance: .aqua, height: fittedHeight)
+        let root = previewHost(controller, appearance: appearance, height: fittedHeight)
         root.layoutSubtreeIfNeeded()
         controller.scrollToTop()
 
         let views = descendants(of: root)
         let buttons = views.compactMap { $0 as? NSButton }
+        let lowContrastText = views.compactMap { view -> String? in
+            guard let field = view as? NSTextField else { return nil }
+            let ratio = contrastRatio(field.textColor ?? .labelColor, against: .windowBackgroundColor, appearance: appearance)
+            guard ratio < 4.5 else { return nil }
+            return "\(field.identifier?.rawValue ?? field.stringValue): \(String(format: "%.2f", ratio)):1"
+        }
+        check(lowContrastText.isEmpty, "all detail text meets 4.5:1 on \(appearance.rawValue) (\(lowContrastText.joined(separator: ", ")))" )
         let scrollView = views.first(where: { $0.identifier?.rawValue == "details.scrollView" }) as? NSScrollView
         check(fittedHeight >= 360 && fittedHeight <= 620, "content uses its natural height within the screen limit")
         if let brand = views.first(where: { $0.identifier?.rawValue == "details.brand" }) {
@@ -198,6 +291,66 @@ struct StatusDetailsCheck {
         check(!views.contains(where: { $0.identifier?.rawValue.contains("pomodoro") == true }), "menu-only popover has no Pomodoro entry")
         check(buttons.filter { $0.identifier?.rawValue.hasPrefix("workbuddy.") == true }.count == 3, "WorkBuddy exposes start/update/stop actions")
         check(buttons.first(where: { $0.identifier?.rawValue == "workbuddy.start" })?.toolTip != nil, "WorkBuddy buttons have accessible help")
+        for (identifier, enabled) in [
+            ("workbuddy.start", snapshot.canStartWorkBuddy),
+            ("workbuddy.update", snapshot.canUpdateWorkBuddy),
+            ("workbuddy.stop", snapshot.canStopWorkBuddy),
+        ] {
+            check(buttons.first(where: { $0.identifier?.rawValue == identifier })?.isEnabled == enabled, "\(identifier) reflects the supplied capability state")
+        }
+        let expectedPrimary = StatusDetailsPresentation.preferredWorkBuddyAction(
+            canStart: snapshot.canStartWorkBuddy,
+            canUpdate: snapshot.canUpdateWorkBuddy,
+            canStop: snapshot.canStopWorkBuddy
+        )
+        let emphasizedActions = buttons.compactMap { button -> String? in
+            guard let identifier = button.identifier?.rawValue,
+                  identifier.hasPrefix("workbuddy."),
+                  button.bezelColor?.isEqual(NSColor.controlAccentColor) == true
+            else { return nil }
+            return String(identifier.dropFirst("workbuddy.".count))
+        }
+        check(emphasizedActions == (expectedPrimary.map { [$0] } ?? []), "WorkBuddy action emphasis follows current capability flags")
+        if snapshot.metrics.isEmpty {
+            check(views.contains(where: { $0.identifier?.rawValue == "details.metricsEmpty" }), "empty metrics state points to the existing performance details")
+        }
+        if let healthyValue = views.first(where: { $0.identifier?.rawValue == "quota.value.5 小时" }) as? NSTextField,
+           snapshot.quotaWindows.first(where: { $0.title == "5 小时" })?.remainingPercent == 68 {
+            check(healthyValue.textColor?.isEqual(NSColor.labelColor) == true, "healthy quota uses high-contrast label color")
+        }
+        if let lowWarning = views.first(where: { $0.identifier?.rawValue == "quota.warning.5 小时" }) as? NSImageView,
+           snapshot.quotaWindows.first(where: { $0.title == "5 小时" })?.remainingPercent == 18 {
+            check(!lowWarning.isHidden && lowWarning.contentTintColor?.isEqual(NSColor.systemRed) == true, "low fresh quota has a semantic warning icon")
+        }
+        if let lowValue = views.first(where: { $0.identifier?.rawValue == "quota.value.5 小时" }) as? NSTextField,
+           snapshot.quotaWindows.first(where: { $0.title == "5 小时" })?.remainingPercent == 18 {
+            check(lowValue.textColor?.isEqual(NSColor.labelColor) == true, "low quota percentage keeps high-contrast text")
+        }
+        if let mediumWarning = views.first(where: { $0.identifier?.rawValue == "quota.warning.7 天" }) as? NSImageView,
+           snapshot.quotaWindows.first(where: { $0.title == "7 天" })?.remainingPercent == 43 {
+            check(!mediumWarning.isHidden && mediumWarning.contentTintColor?.isEqual(NSColor.systemOrange) == true, "moderate quota warning uses the warning palette")
+        }
+        if let staleWarning = views.first(where: { $0.identifier?.rawValue == "quota.warning.5 小时" }) as? NSImageView,
+           snapshot.quotaIsStale {
+            check(staleWarning.isHidden, "historical quota does not look like a current warning")
+        }
+        if let workBuddyState = views.first(where: { $0.identifier?.rawValue == "service.state.WorkBuddy" }) as? NSTextField {
+            check(workBuddyState.textColor?.isEqual(NSColor.labelColor) == true, "service state copy stays high contrast in every tone")
+        }
+        if let tokenValue = views.first(where: { $0.identifier?.rawValue == "details.tokenValue" }) as? NSTextField,
+           let tokenDetails = views.first(where: { $0.identifier?.rawValue == "details.tokenDetails" }) {
+            let valueFrame = tokenValue.convert(tokenValue.bounds, to: root)
+            let detailsFrame = tokenDetails.convert(tokenDetails.bounds, to: root)
+            check(valueFrame.maxX <= detailsFrame.minX + 1, "token total and exact details do not overlap")
+            if snapshot.tokenShortText.count > 7 {
+                check(tokenValue.font?.pointSize == 24, "long token total uses the compact size while remaining visible")
+                if let exact = views.first(where: { $0.identifier?.rawValue == "details.tokenExact" }) as? NSTextField,
+                   let freshness = views.first(where: { $0.identifier?.rawValue == "details.tokenFreshness" }) as? NSTextField {
+                    check(exact.maximumNumberOfLines == 2 && freshness.maximumNumberOfLines == 2, "long exact token count and timestamp may wrap")
+                }
+            }
+        }
+        check(buttons.filter { $0.identifier?.rawValue.hasPrefix("details.") == true }.allSatisfy { $0.focusRingType == .default }, "fixed footer retains native keyboard focus rings")
         if let footer = buttons.first(where: { $0.identifier?.rawValue == "details.more" }), let scrollView {
             let footerFrame = footer.convert(footer.bounds, to: root)
             let scrollFrame = scrollView.convert(scrollView.bounds, to: root)
@@ -241,7 +394,7 @@ struct StatusDetailsCheck {
     }
 
     private static func render(_ snapshot: StatusDetailsSnapshot, appearance: NSAppearance.Name, name: String) {
-        let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["STATUS_DETAILS_PREVIEW_DIR"] ?? "/private/tmp/goodtouchbar-030-preview", isDirectory: true)
+        let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["STATUS_DETAILS_PREVIEW_DIR"] ?? "/private/tmp/goodtouchbar-031-preview", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let destination = directory.appendingPathComponent(name)
@@ -305,6 +458,49 @@ struct StatusDetailsCheck {
             }
         }
         return false
+    }
+
+    private static func contrastRatio(
+        _ foreground: NSColor,
+        against background: NSColor,
+        appearance appearanceName: NSAppearance.Name
+    ) -> Double {
+        guard let appearance = NSAppearance(named: appearanceName) else { return 0 }
+        var ratio = 0.0
+        appearance.performAsCurrentDrawingAppearance {
+            guard let foreground = foreground.usingColorSpace(.deviceRGB),
+                  let background = background.usingColorSpace(.deviceRGB),
+                  background.alphaComponent >= 0.999
+            else { return }
+
+            let alpha = Double(foreground.alphaComponent)
+            func composited(_ foregroundComponent: CGFloat, _ backgroundComponent: CGFloat) -> Double {
+                Double(foregroundComponent) * alpha + Double(backgroundComponent) * (1 - alpha)
+            }
+            func luminance(red: Double, green: Double, blue: Double) -> Double {
+                func linear(_ component: Double) -> Double {
+                    return component <= 0.04045 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
+                }
+                return 0.2126 * linear(red)
+                    + 0.7152 * linear(green)
+                    + 0.0722 * linear(blue)
+            }
+
+            let foregroundLuminance = luminance(
+                red: composited(foreground.redComponent, background.redComponent),
+                green: composited(foreground.greenComponent, background.greenComponent),
+                blue: composited(foreground.blueComponent, background.blueComponent)
+            )
+            let backgroundLuminance = luminance(
+                red: Double(background.redComponent),
+                green: Double(background.greenComponent),
+                blue: Double(background.blueComponent)
+            )
+            let lighter = max(foregroundLuminance, backgroundLuminance)
+            let darker = min(foregroundLuminance, backgroundLuminance)
+            ratio = (lighter + 0.05) / (darker + 0.05)
+        }
+        return ratio
     }
 
     private static func check(_ condition: @autoclosure () -> Bool, _ label: String) {

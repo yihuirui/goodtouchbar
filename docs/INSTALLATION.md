@@ -2,9 +2,9 @@
 
 ## Install
 
-goodtouchbar 0.3.0 provides separate `x86_64` Intel and `arm64` Apple silicon packages for macOS 13 or later. The app is menu-only on unsupported or unknown Mac models. See [hardware compatibility](COMPATIBILITY.md) for the initial Touch Bar model allowlist and Auto/On/Off behavior.
+goodtouchbar 0.3.1 provides separate `x86_64` Intel and `arm64` Apple silicon packages for macOS 13 or later. The app is menu-only on unsupported or unknown Mac models. See [hardware compatibility](COMPATIBILITY.md) for the initial Touch Bar model allowlist and Auto/On/Off behavior.
 
-1. Build from reviewed source in the [public repository](https://github.com/yihuirui/goodtouchbar), or check the [Releases page](https://github.com/yihuirui/goodtouchbar/releases) for a future official artifact. No release download is published yet.
+1. Build from reviewed source in the [public repository](https://github.com/yihuirui/goodtouchbar), or download the package matching your Mac from the [Releases page](https://github.com/yihuirui/goodtouchbar/releases). Preview packages are ad-hoc signed and not notarized.
 2. Move `goodtouchbar.app` to `/Applications`.
 3. Open the app and check its status panel. If macOS reports that the app cannot be verified, remember that local builds are ad-hoc signed and not notarized. Do not override Gatekeeper for an artifact you do not trust; building from source is the available review path.
 4. The optional fan helper is not required for the app, system controls, read-only sensors, or AI status. It is available only when the app confirms it is running natively on Intel. Apple silicon packages do not include or install the helper; Apple silicon fan readings are read-only when available. On supported Intel hardware, install the helper only if you intend to try experimental fan control. Use the app's fan-control screen to install or update it; macOS will ask for administrator authorization. The helper is bound to the installed app's code signature. Do not run the installer script yourself with `sudo`.

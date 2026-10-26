@@ -57,7 +57,7 @@ enum StatusDetailsPresentation {
 
     static func quotaText(_ value: Int?, stale: Bool, awaitingReset: Bool = false) -> String {
         guard let value = quotaPercent(value) else { return awaitingReset ? "额度待更新" : "暂无数据" }
-        return stale ? "历史剩余 \(value)% · 已过期" : "剩余 \(value)%"
+        return stale ? "历史剩余 \(value)%，已过期" : "剩余 \(value)%"
     }
 
     static func quotaPrimaryText(_ value: Int?, stale: Bool) -> String {
@@ -67,7 +67,7 @@ enum StatusDetailsPresentation {
 
     static func quotaSecondaryText(_ value: Int?, stale: Bool, awaitingReset: Bool) -> String {
         guard quotaPercent(value) != nil else { return awaitingReset ? "额度待更新" : "暂无数据" }
-        return stale ? "历史额度 · 已过期" : ""
+        return stale ? "历史额度，已过期" : ""
     }
 
     static func service(
@@ -149,6 +149,19 @@ enum StatusDetailsPresentation {
             || (state == "idle" && !title.contains("未监控"))
         default: return false
         }
+    }
+
+    static func preferredWorkBuddyAction(
+        canStart: Bool,
+        canUpdate: Bool,
+        canStop: Bool
+    ) -> String? {
+        if canStart && !canStop { return "start" }
+        if canUpdate && canStop { return "update" }
+        if canStart { return "start" }
+        if canUpdate { return "update" }
+        if canStop { return "stop" }
+        return nil
     }
 }
 
@@ -254,14 +267,14 @@ final class StatusDetailsViewController: NSViewController {
     private let quotaCards = [StatusDetailsQuotaCard(title: "5 小时"), StatusDetailsQuotaCard(title: "7 天")]
     private let quotaFreshness = NSTextField(labelWithString: "")
     private let tokenValue = NSTextField(labelWithString: "--")
-    private let tokenExact = NSTextField(labelWithString: "")
-    private let tokenFreshness = NSTextField(labelWithString: "")
+    private let tokenExact = NSTextField(wrappingLabelWithString: "")
+    private let tokenFreshness = NSTextField(wrappingLabelWithString: "")
     private let chatGPTCard = StatusDetailsActivityCard(name: "ChatGPT", symbol: "sparkles")
     private let workBuddyCard = StatusDetailsActivityCard(name: "WorkBuddy", symbol: "sparkles.rectangle.stack")
     private let startButton = NSButton(title: "开始监控…", target: nil, action: nil)
     private let updateButton = NSButton(title: "更新会话…", target: nil, action: nil)
     private let stopButton = NSButton(title: "停止", target: nil, action: nil)
-    private let fanNoteLabel = NSTextField(labelWithString: "")
+    private let fanNoteLabel = NSTextField(wrappingLabelWithString: "")
     private let contentStack = StatusDetailsDocumentStackView()
     private let metricsStack = NSStackView()
     private let scrollView = NSScrollView()
@@ -339,7 +352,8 @@ final class StatusDetailsViewController: NSViewController {
         brandLabel.identifier = NSUserInterfaceItemIdentifier("details.brand")
         brandLabel.setAccessibilityLabel("goodtouchbar")
         modeLabel.font = .systemFont(ofSize: 11, weight: .semibold)
-        modeLabel.textColor = .secondaryLabelColor
+        modeLabel.textColor = .labelColor
+        modeLabel.identifier = NSUserInterfaceItemIdentifier("details.mode")
         modeLabel.alignment = .center
         modeLabel.setContentHuggingPriority(.required, for: .horizontal)
         let modeBadge = StatusDetailsBadgeBackground()
@@ -371,31 +385,46 @@ final class StatusDetailsViewController: NSViewController {
         quotaCards.forEach { $0.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.quotaCardWidth).isActive = true }
         content.addArrangedSubview(quotaRow)
         quotaFreshness.font = .systemFont(ofSize: 11)
-        quotaFreshness.textColor = .secondaryLabelColor
+        quotaFreshness.textColor = .labelColor
+        quotaFreshness.identifier = NSUserInterfaceItemIdentifier("details.quotaFreshness")
         content.addArrangedSubview(quotaFreshness)
+        content.addArrangedSubview(sectionDivider())
 
         content.addArrangedSubview(sectionHeading("今日 Token"))
-        let tokenCard = roundedContainer()
-        let tokenStack = NSStackView(views: [tokenValue, tokenExact, tokenFreshness])
-        tokenStack.orientation = .vertical
-        tokenStack.alignment = .leading
-        tokenStack.spacing = 2
-        tokenCard.addSubview(tokenStack)
+        let tokenDetails = NSStackView(views: [tokenExact, tokenFreshness])
+        tokenDetails.orientation = .vertical
+        tokenDetails.alignment = .leading
+        tokenDetails.spacing = 5
+        let tokenStack = NSStackView(views: [tokenValue, tokenDetails])
+        tokenStack.orientation = .horizontal
+        tokenStack.alignment = .centerY
+        tokenStack.spacing = 16
         tokenStack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            tokenStack.leadingAnchor.constraint(equalTo: tokenCard.leadingAnchor, constant: 10),
-            tokenStack.trailingAnchor.constraint(equalTo: tokenCard.trailingAnchor, constant: -10),
-            tokenStack.topAnchor.constraint(equalTo: tokenCard.topAnchor, constant: 7),
-            tokenStack.bottomAnchor.constraint(equalTo: tokenCard.bottomAnchor, constant: -7),
-        ])
-        tokenValue.font = .systemFont(ofSize: 26, weight: .semibold)
-        tokenExact.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        tokenExact.textColor = .secondaryLabelColor
-        tokenFreshness.font = .systemFont(ofSize: 11)
-        tokenFreshness.textColor = .secondaryLabelColor
-        tokenCard.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
-        tokenCard.heightAnchor.constraint(equalToConstant: 82).isActive = true
-        content.addArrangedSubview(tokenCard)
+        tokenDetails.identifier = NSUserInterfaceItemIdentifier("details.tokenDetails")
+        tokenValue.font = .systemFont(ofSize: 28, weight: .semibold)
+        tokenValue.setContentHuggingPriority(.required, for: .horizontal)
+        tokenValue.widthAnchor.constraint(greaterThanOrEqualToConstant: 112).isActive = true
+        tokenValue.widthAnchor.constraint(lessThanOrEqualToConstant: 204).isActive = true
+        tokenExact.font = .systemFont(ofSize: 13, weight: .medium)
+        tokenExact.textColor = .labelColor
+        tokenExact.maximumNumberOfLines = 2
+        tokenExact.lineBreakMode = .byCharWrapping
+        tokenExact.identifier = NSUserInterfaceItemIdentifier("details.tokenExact")
+        tokenFreshness.font = .systemFont(ofSize: 12)
+        tokenFreshness.textColor = .labelColor
+        tokenFreshness.maximumNumberOfLines = 2
+        tokenFreshness.lineBreakMode = .byWordWrapping
+        tokenFreshness.identifier = NSUserInterfaceItemIdentifier("details.tokenFreshness")
+        tokenDetails.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        tokenDetails.widthAnchor.constraint(greaterThanOrEqualToConstant: 148).isActive = true
+        tokenDetails.widthAnchor.constraint(lessThanOrEqualToConstant: StatusDetailsLayout.bodyWidth - 128).isActive = true
+        tokenExact.widthAnchor.constraint(equalTo: tokenDetails.widthAnchor).isActive = true
+        tokenFreshness.widthAnchor.constraint(equalTo: tokenDetails.widthAnchor).isActive = true
+        tokenValue.identifier = NSUserInterfaceItemIdentifier("details.tokenValue")
+        tokenStack.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
+        tokenStack.heightAnchor.constraint(greaterThanOrEqualToConstant: 54).isActive = true
+        content.addArrangedSubview(tokenStack)
+        content.addArrangedSubview(sectionDivider())
 
         content.addArrangedSubview(sectionHeading("活动状态"))
         content.addArrangedSubview(chatGPTCard)
@@ -405,16 +434,19 @@ final class StatusDetailsViewController: NSViewController {
         actions.distribution = .fillEqually
         actions.spacing = 6
         actions.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
-        for (button, identifier, title, action) in [
-            (startButton, "workbuddy.start", "开始监控", #selector(startWorkBuddy)),
-            (updateButton, "workbuddy.update", "更新会话", #selector(updateWorkBuddy)),
-            (stopButton, "workbuddy.stop", "停止监控", #selector(stopWorkBuddy)),
+        for (button, identifier, title, symbol, action) in [
+            (startButton, "workbuddy.start", "开始监控", "play.fill", #selector(startWorkBuddy)),
+            (updateButton, "workbuddy.update", "更新会话", "arrow.clockwise", #selector(updateWorkBuddy)),
+            (stopButton, "workbuddy.stop", "停止监控", "stop.fill", #selector(stopWorkBuddy)),
         ] {
             button.identifier = NSUserInterfaceItemIdentifier(identifier)
             button.title = title
+            button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+            button.imagePosition = .imageLeading
             button.bezelStyle = .rounded
             button.target = self
             button.action = action
+            button.focusRingType = .default
             button.setAccessibilityLabel(title)
             let help = action == #selector(startWorkBuddy) || action == #selector(updateWorkBuddy)
                 ? "继续后会先显示现有确认提示"
@@ -423,27 +455,20 @@ final class StatusDetailsViewController: NSViewController {
             button.setAccessibilityHelp(help)
         }
         content.addArrangedSubview(actions)
+        content.addArrangedSubview(sectionDivider())
 
         content.addArrangedSubview(sectionHeading("系统概览"))
-        let metricsCard = roundedContainer()
         metricsStack.orientation = .vertical
         metricsStack.alignment = .leading
-        metricsStack.spacing = 8
-        metricsCard.addSubview(metricsStack)
-        metricsStack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            metricsStack.leadingAnchor.constraint(equalTo: metricsCard.leadingAnchor, constant: 10),
-            metricsStack.trailingAnchor.constraint(equalTo: metricsCard.trailingAnchor, constant: -10),
-            metricsStack.topAnchor.constraint(equalTo: metricsCard.topAnchor, constant: 9),
-            metricsStack.bottomAnchor.constraint(equalTo: metricsCard.bottomAnchor, constant: -9),
-        ])
-        metricsCard.identifier = NSUserInterfaceItemIdentifier("details.metricsCard")
-        metricsCard.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
-        metricsCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
-        content.addArrangedSubview(metricsCard)
-        fanNoteLabel.font = .systemFont(ofSize: 11)
-        fanNoteLabel.textColor = .secondaryLabelColor
+        metricsStack.spacing = 10
+        metricsStack.identifier = NSUserInterfaceItemIdentifier("details.metrics")
+        metricsStack.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
+        content.addArrangedSubview(metricsStack)
+        fanNoteLabel.font = .systemFont(ofSize: 12)
+        fanNoteLabel.textColor = .labelColor
         fanNoteLabel.lineBreakMode = .byTruncatingTail
+        fanNoteLabel.maximumNumberOfLines = 2
+        fanNoteLabel.identifier = NSUserInterfaceItemIdentifier("details.fanNote")
         fanNoteLabel.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
         content.addArrangedSubview(fanNoteLabel)
 
@@ -459,9 +484,10 @@ final class StatusDetailsViewController: NSViewController {
             button.identifier = NSUserInterfaceItemIdentifier(identifier)
             button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: accessibility)
             button.imagePosition = .imageLeading
-            button.bezelStyle = .texturedRounded
+            button.bezelStyle = .rounded
             button.target = self
             button.action = action
+            button.focusRingType = .default
             button.toolTip = accessibility
             button.setAccessibilityLabel(accessibility)
         }
@@ -477,9 +503,9 @@ final class StatusDetailsViewController: NSViewController {
         renderedSnapshot = snapshot
         modeLabel.stringValue = snapshot.modeLabel
         if snapshot.quotaAwaitingReset {
-            quotaFreshness.stringValue = "额度待更新 · 窗口已结束，等待新数据"
+            quotaFreshness.stringValue = "额度待更新，窗口已结束，等待新数据"
         } else if snapshot.quotaIsStale {
-            quotaFreshness.stringValue = "历史数据 · \(snapshot.quotaUpdatedText)"
+            quotaFreshness.stringValue = "历史额度数据，\(snapshot.quotaUpdatedText)"
         } else if snapshot.quotaWindows.allSatisfy({ $0.remainingPercent == nil }) {
             quotaFreshness.stringValue = snapshot.quotaUpdatedText == "暂未获取数据"
                 ? "尚未获取额度数据"
@@ -499,20 +525,33 @@ final class StatusDetailsViewController: NSViewController {
             )
         }
         tokenValue.stringValue = snapshot.tokenShortText
+        tokenValue.font = .systemFont(ofSize: snapshot.tokenShortText.count > 7 ? 24 : 28, weight: .semibold)
         tokenExact.stringValue = snapshot.tokenExactText
         tokenFreshness.stringValue = snapshot.tokenIsStale
-            ? "数据已过期 · \(snapshot.tokenUpdatedText)"
+            ? "已过期，\(snapshot.tokenUpdatedText)"
             : snapshot.tokenUpdatedText
+        tokenValue.textColor = .labelColor
+        tokenExact.toolTip = snapshot.tokenExactText
         chatGPTCard.update(snapshot.chatGPT)
         workBuddyCard.update(snapshot.workBuddy)
         startButton.isEnabled = snapshot.canStartWorkBuddy
         updateButton.isEnabled = snapshot.canUpdateWorkBuddy
         stopButton.isEnabled = snapshot.canStopWorkBuddy
+        let primaryAction = StatusDetailsPresentation.preferredWorkBuddyAction(
+            canStart: snapshot.canStartWorkBuddy,
+            canUpdate: snapshot.canUpdateWorkBuddy,
+            canStop: snapshot.canStopWorkBuddy
+        )
+        startButton.bezelColor = primaryAction == "start" ? .controlAccentColor : nil
+        updateButton.bezelColor = primaryAction == "update" ? .controlAccentColor : nil
+        stopButton.bezelColor = primaryAction == "stop" ? .controlAccentColor : nil
         for view in metricsStack.arrangedSubviews { metricsStack.removeArrangedSubview(view); view.removeFromSuperview() }
         if snapshot.metrics.isEmpty {
-            let label = NSTextField(labelWithString: "系统指标暂不可用")
-            label.font = .systemFont(ofSize: 12)
-            label.textColor = .secondaryLabelColor
+            let label = NSTextField(wrappingLabelWithString: "暂无可用读数，可查看性能详情")
+            label.identifier = NSUserInterfaceItemIdentifier("details.metricsEmpty")
+            label.font = .systemFont(ofSize: 13)
+            label.textColor = .labelColor
+            label.setAccessibilityLabel("暂无可用系统读数，可打开性能详情查看")
             metricsStack.addArrangedSubview(label)
         } else {
             let metrics = Array(snapshot.metrics.prefix(4))
@@ -522,7 +561,7 @@ final class StatusDetailsViewController: NSViewController {
                 row.alignment = .centerY
                 row.distribution = .fillEqually
                 row.spacing = 12
-                row.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth - 20).isActive = true
+                row.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
                 for metric in metrics[start..<min(start + 2, metrics.count)] {
                     let symbol = NSImageView(image: NSImage(
                         systemSymbolName: metric.symbol,
@@ -532,13 +571,15 @@ final class StatusDetailsViewController: NSViewController {
                     symbol.widthAnchor.constraint(equalToConstant: 14).isActive = true
                     symbol.heightAnchor.constraint(equalToConstant: 14).isActive = true
                     let title = NSTextField(labelWithString: metric.title)
-                    title.font = .systemFont(ofSize: 11, weight: .medium)
+                    title.font = .systemFont(ofSize: 12, weight: .medium)
+                    title.textColor = .labelColor
                     let titleRow = NSStackView(views: [symbol, title])
                     titleRow.orientation = .horizontal
                     titleRow.alignment = .centerY
                     titleRow.spacing = 6
                     let value = NSTextField(wrappingLabelWithString: metric.value)
                     value.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+                    value.textColor = .labelColor
                     value.lineBreakMode = .byCharWrapping
                     value.maximumNumberOfLines = 3
                     value.toolTip = metric.accessibilityLabel
@@ -585,13 +626,16 @@ final class StatusDetailsViewController: NSViewController {
 
     private func sectionHeading(_ text: String) -> NSTextField {
         let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
-        label.textColor = .secondaryLabelColor
+        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.textColor = .labelColor
         return label
     }
 
-    private func roundedContainer() -> NSView {
-        StatusDetailsCardBackground()
+    private func sectionDivider() -> NSBox {
+        let divider = NSBox()
+        divider.boxType = .separator
+        divider.widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
+        return divider
     }
 
     private func updateDocumentFrame() {
@@ -611,6 +655,10 @@ private final class StatusDetailsDocumentStackView: NSStackView {
 private final class StatusDetailsQuotaCard: NSView {
     private let titleLabel: NSTextField
     private let percentLabel = NSTextField(labelWithString: "--")
+    private let warningIcon = NSImageView(image: NSImage(
+        systemSymbolName: "exclamationmark.triangle.fill",
+        accessibilityDescription: "额度偏低"
+    ) ?? NSImage())
     private let secondaryLabel = NSTextField(labelWithString: "暂无数据")
     private let progress = StatusDetailsQuotaProgressView()
     private let resetLabel = NSTextField(labelWithString: "重置时间未知")
@@ -618,17 +666,30 @@ private final class StatusDetailsQuotaCard: NSView {
     init(title: String) {
         titleLabel = NSTextField(labelWithString: title)
         super.init(frame: .zero)
+        titleLabel.textColor = .labelColor
+        percentLabel.identifier = NSUserInterfaceItemIdentifier("quota.value.\(title)")
+        warningIcon.identifier = NSUserInterfaceItemIdentifier("quota.warning.\(title)")
+        secondaryLabel.identifier = NSUserInterfaceItemIdentifier("quota.secondary.\(title)")
+        resetLabel.identifier = NSUserInterfaceItemIdentifier("quota.reset.\(title)")
         titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         percentLabel.font = .systemFont(ofSize: 25, weight: .semibold)
-        secondaryLabel.font = .systemFont(ofSize: 11)
-        secondaryLabel.textColor = .secondaryLabelColor
+        warningIcon.contentTintColor = .systemOrange
+        warningIcon.setAccessibilityElement(false)
+        warningIcon.widthAnchor.constraint(equalToConstant: 13).isActive = true
+        warningIcon.heightAnchor.constraint(equalToConstant: 13).isActive = true
+        let valueRow = NSStackView(views: [warningIcon, percentLabel])
+        valueRow.orientation = .horizontal
+        valueRow.alignment = .centerY
+        valueRow.spacing = 5
+        secondaryLabel.font = .systemFont(ofSize: 12)
+        secondaryLabel.textColor = .labelColor
         secondaryLabel.maximumNumberOfLines = 2
         secondaryLabel.lineBreakMode = .byTruncatingTail
-        resetLabel.font = .systemFont(ofSize: 11)
-        resetLabel.textColor = .secondaryLabelColor
+        resetLabel.font = .systemFont(ofSize: 12)
+        resetLabel.textColor = .labelColor
         resetLabel.maximumNumberOfLines = 2
         resetLabel.lineBreakMode = .byTruncatingTail
-        let stack = NSStackView(views: [titleLabel, percentLabel, secondaryLabel, progress, resetLabel])
+        let stack = NSStackView(views: [titleLabel, valueRow, secondaryLabel, progress, resetLabel])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 3
@@ -638,23 +699,16 @@ private final class StatusDetailsQuotaCard: NSView {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 9),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -9),
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 9),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -8),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
             progress.widthAnchor.constraint(equalTo: stack.widthAnchor),
             secondaryLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
             resetLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
             titleLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            percentLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            valueRow.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
-        heightAnchor.constraint(equalToConstant: 120).isActive = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        NSColor.controlBackgroundColor.setFill()
-        NSBezierPath(roundedRect: bounds, xRadius: 9, yRadius: 9).fill()
-    }
 
     func update(title: String, percent: Int?, resetText: String, stale: Bool, awaitingReset: Bool) {
         titleLabel.stringValue = title
@@ -667,6 +721,7 @@ private final class StatusDetailsQuotaCard: NSView {
         progress.isHidden = value == nil
         progress.value = value.map(Double.init)
         let statusColor: NSColor
+        let isLow = value.map { $0 < 50 } ?? false
         if stale || value == nil {
             statusColor = .secondaryLabelColor
         } else if let value, value < 20 {
@@ -674,21 +729,25 @@ private final class StatusDetailsQuotaCard: NSView {
         } else if let value, value < 50 {
             statusColor = .systemOrange
         } else {
-            statusColor = .systemGreen
+            statusColor = .labelColor
         }
-        progress.fillColor = statusColor
-        percentLabel.textColor = statusColor
-        secondaryLabel.textColor = .secondaryLabelColor
+        warningIcon.isHidden = stale || !isLow
+        warningIcon.contentTintColor = value.map { $0 < 20 ? .systemRed : .systemOrange }
+        warningIcon.toolTip = warningIcon.isHidden ? nil : "额度偏低"
+        progress.fillColor = stale || value == nil ? .tertiaryLabelColor : statusColor
+        percentLabel.textColor = .labelColor
+        secondaryLabel.textColor = .labelColor
         resetLabel.stringValue = resetText.isEmpty ? "重置时间未知" : resetText
         setAccessibilityElement(true)
-        setAccessibilityLabel("\(title)，\(StatusDetailsPresentation.quotaText(value, stale: stale, awaitingReset: awaitingReset))，\(resetLabel.stringValue)")
+        let lowText = warningIcon.isHidden ? "" : "，额度偏低"
+        setAccessibilityLabel("\(title)，\(StatusDetailsPresentation.quotaText(value, stale: stale, awaitingReset: awaitingReset))\(lowText)，\(resetLabel.stringValue)")
     }
 }
 
 @MainActor
 private final class StatusDetailsQuotaProgressView: NSView {
     var value: Double? { didSet { needsDisplay = true } }
-    var fillColor: NSColor = .systemGreen { didSet { needsDisplay = true } }
+    var fillColor: NSColor = .labelColor { didSet { needsDisplay = true } }
 
     override var intrinsicContentSize: NSSize { NSSize(width: 120, height: 5) }
 
@@ -724,10 +783,13 @@ private final class StatusDetailsActivityCard: NSView {
         icon.widthAnchor.constraint(equalToConstant: 15).isActive = true
         icon.heightAnchor.constraint(equalToConstant: 15).isActive = true
         (heading.views[1] as? NSTextField)?.font = .systemFont(ofSize: 12, weight: .medium)
+        (heading.views[1] as? NSTextField)?.textColor = .labelColor
+        stateLabel.identifier = NSUserInterfaceItemIdentifier("service.state.\(name)")
+        detailLabel.identifier = NSUserInterfaceItemIdentifier("service.detail.\(name)")
         stateLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         stateLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        detailLabel.font = .systemFont(ofSize: 11)
-        detailLabel.textColor = .secondaryLabelColor
+        detailLabel.font = .systemFont(ofSize: 12)
+        detailLabel.textColor = .labelColor
         detailLabel.maximumNumberOfLines = 2
         detailLabel.lineBreakMode = .byTruncatingTail
         let stack = NSStackView(views: [heading, detailLabel])
@@ -745,24 +807,19 @@ private final class StatusDetailsActivityCard: NSView {
             detailLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         widthAnchor.constraint(equalToConstant: StatusDetailsLayout.bodyWidth).isActive = true
-        heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        heightAnchor.constraint(lessThanOrEqualToConstant: 84).isActive = true
+        heightAnchor.constraint(greaterThanOrEqualToConstant: 42).isActive = true
+        heightAnchor.constraint(lessThanOrEqualToConstant: 88).isActive = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        NSColor.controlBackgroundColor.setFill()
-        NSBezierPath(roundedRect: bounds, xRadius: 9, yRadius: 9).fill()
-    }
 
     func update(_ service: StatusDetailsService) {
         stateLabel.stringValue = service.state
         detailLabel.stringValue = service.detail
         detailLabel.isHidden = service.detail.isEmpty
         detailLabel.toolTip = service.detail.isEmpty ? nil : service.detail
-        stateLabel.textColor = color(for: service.tone)
+        stateLabel.textColor = .labelColor
+        icon.contentTintColor = color(for: service.tone)
         setAccessibilityElement(true)
         setAccessibilityLabel("\(name)：\(service.state)\(service.detail.isEmpty ? "" : "，\(service.detail)")")
     }
@@ -773,18 +830,9 @@ private final class StatusDetailsActivityCard: NSView {
         case .active: return .systemBlue
         case .waiting: return .systemOrange
         case .success: return .systemGreen
-        case .stale: return .systemPurple
+        case .stale: return .systemOrange
         case .error: return .systemRed
         }
-    }
-}
-
-@MainActor
-private final class StatusDetailsCardBackground: NSView {
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        NSColor.controlBackgroundColor.setFill()
-        NSBezierPath(roundedRect: bounds, xRadius: 9, yRadius: 9).fill()
     }
 }
 
