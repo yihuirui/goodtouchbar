@@ -2,9 +2,16 @@
 
 User-visible changes for each release are listed here.
 
-## 0.2.0 (build 2) — release preparation
+## 0.3.0 (build 3) — experimental preview
 
-This source package adds native Apple silicon support alongside Intel. It is still being prepared for its first public release; no release artifact has been published.
+- Replace the primary status-item text menu with a native details popover: separate five-hour and weekly quota cards, today's token usage, AI state, and a compact system overview.
+- Keep the complete action menu accessible with a right click and the details panel's More entry; group diagnostics separately from everyday actions.
+- Use existing monitoring snapshots for presentation; opening the panel does not start WorkBuddy retry or install a fan helper.
+- Retain menu-only and Touch Bar modes, Apple silicon read-only fan policy, and separate native packages.
+
+## 0.2.0 (build 2) — experimental preview
+
+Released as an [experimental preview](https://github.com/yihuirui/goodtouchbar/releases/tag/v0.2.0), with native Apple silicon support alongside Intel.
 
 - Add Auto, On, and Off Touch Bar modes with model allowlist detection and conservative menu-only behavior for unsupported or unknown models.
 - Add Apple silicon CPU, memory, thermal-zone, AI activity, and menu-only support; keep fan readings read-only and omit the fan helper from arm64 packages.

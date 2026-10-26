@@ -54,6 +54,12 @@ final class SystemMetricsMonitor: NSObject {
         observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }; observers = []
         client.stop(); if wasRunning { log.record("monitor_stopped") }
     }
+    /// Refreshes only the already configured metrics after an explicit user action.
+    func refresh() {
+        nextMach = 0
+        nextSensors = 0
+        tick()
+    }
     private func setSleeping(_ value: Bool) {
         sleeping = value; generation += 1; snapshot = MetricsSnapshot(); temperatureReadings = [:]; client.stop()
         machQueue.async { [reader] in reader.reset() }

@@ -1,12 +1,14 @@
 # goodtouchbar
 
-**Version 0.2.0 · build 2 · experimental preview**
+**Version 0.3.0 · build 3 · experimental preview**
 
 goodtouchbar is an experimental macOS companion for Intel and Apple silicon Macs. It brings AI activity, selected system metrics, and everyday controls into a configurable menu and, on supported hardware, a Touch Bar. Touch Bar availability depends on the Mac model, not on whether the processor is Intel or Apple silicon. The source is maintained in the public repository; preview packages are distributed through GitHub Releases.
 
 [GitHub repository](https://github.com/yihuirui/goodtouchbar) · [Releases](https://github.com/yihuirui/goodtouchbar/releases) · [简体中文](README.zh-CN.md) · [Hardware compatibility](docs/COMPATIBILITY.md) · [Build and CI](docs/BUILDING.md) · [Install and remove](docs/INSTALLATION.md) · [Privacy](docs/PRIVACY.md) · [Presets](docs/PRESETS.md) · [Design influences](docs/PROJECT-INFLUENCES.md)
 
 ## What it does
+
+- **Status details:** left-click the main status item to view quota cards, today's token usage, AI status, and a compact system overview. The bottom toolbar stays visible while the content scrolls. Right-click, or choose More in the panel, to open the complete action menu. Retry and hardware actions keep their existing confirmation and capability checks.
 
 - **System controls:** a single tap on the Touch Bar item opens a native controls panel; a long press toggles mute directly. The panel provides a main-output volume slider, mute, play/pause, and a list of running apps. Play/pause posts a system-defined macOS media event. Clicking it requires Accessibility permission; macOS prompts for access, and the panel offers a link to Accessibility settings if access is denied. A player may ignore the event, and playback response has not been validated on a physical target Mac.
 - **AI activity:** displays Codex quota data read from recent local rollout records, optional token totals through OpenToken, agent output-speed estimates from recent local session events, and WorkBuddy activity. Codex rollout updates can lag, so quota values may be stale.
@@ -54,7 +56,7 @@ Read the full [privacy and data handling notes](docs/PRIVACY.md) and [security r
 
 ## Project status
 
-The 0.2.0 / build 2 public test suites passed on this Apple silicon development Mac using native arm64 and x86_64 under Rosetta. A separate menu-only UI regression passed. Read-only sampling on an M1 Pro returned CPU/memory data, M1 CPU thermal-zone readings, and two fan RPM readings. This does not validate native Intel hardware. The 0.1.0 / build 1 preparation is retained in [CHANGELOG.md](CHANGELOG.md). Local checks and GitHub publication are separate statuses, and automated checks do not establish physical Touch Bar presentation, player response, sensor coverage, or fan-write behavior. M1/M2 Touch Bar model examples are based on Apple specifications, not hardware acceptance of this app. Packages are ad-hoc signed and not notarized; check the [Releases page](https://github.com/yihuirui/goodtouchbar/releases) for publication status.
+The 0.3.0 / build 3 public test suites passed on this Apple silicon development Mac using native arm64 and x86_64 under Rosetta. Status-detail state, action-routing, accessibility and layout checks also passed. Screenshot previews use synthetic data; offscreen layout previews do not validate macOS vibrancy composition. Earlier 0.2.0 read-only sampling on an M1 Pro returned CPU/memory data, M1 CPU thermal-zone readings, and two fan RPM readings. This does not validate native Intel hardware. The 0.1.0 / build 1 preparation is retained in [CHANGELOG.md](CHANGELOG.md). Local checks and GitHub publication are separate statuses, and automated checks do not establish physical Touch Bar presentation, player response, sensor coverage, or fan-write behavior. M1/M2 Touch Bar model examples are based on Apple specifications, not hardware acceptance of this app. Packages are ad-hoc signed and not notarized; check the [Releases page](https://github.com/yihuirui/goodtouchbar/releases) for publication status.
 
 ## Contributing
 

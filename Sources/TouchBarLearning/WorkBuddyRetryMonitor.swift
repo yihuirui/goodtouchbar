@@ -13,6 +13,7 @@ final class WorkBuddyActivityMonitor: NSObject {
         let expiresAt: Date
     }
     private var commandNotice: CommandNotice?
+    var commandInFlight: Bool { commandRunning }
 
     init(directory: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/GoodTouchBar/WorkBuddyRetry")) {

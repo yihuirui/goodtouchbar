@@ -45,20 +45,20 @@ jobs:
       - name: Build native app package without opening it
         run: |
           /bin/zsh build-app.sh --arch "${{ matrix.arch }}" --no-open
-          test -d "dist/${{ matrix.arch }}/goodtouchbar.app"
-          test -f "dist/goodtouchbar-0.2.0-${{ matrix.arch }}.zip"
-          test -f "dist/goodtouchbar-0.2.0-${{ matrix.arch }}.zip.sha256"
-          test -f "dist/goodtouchbar-0.2.0-${{ matrix.arch }}-build-manifest.txt"
+          test -d "dist/0.3.0/${{ matrix.arch }}/goodtouchbar.app"
+          test -f "dist/goodtouchbar-0.3.0-${{ matrix.arch }}.zip"
+          test -f "dist/goodtouchbar-0.3.0-${{ matrix.arch }}.zip.sha256"
+          test -f "dist/goodtouchbar-0.3.0-${{ matrix.arch }}-build-manifest.txt"
 
       - name: Save manual build artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v6
         with:
-          name: goodtouchbar-0.2.0-${{ matrix.arch }}
+          name: goodtouchbar-0.3.0-${{ matrix.arch }}
           path: |
-            dist/${{ matrix.arch }}/
-            dist/goodtouchbar-0.2.0-${{ matrix.arch }}.zip
-            dist/goodtouchbar-0.2.0-${{ matrix.arch }}.zip.sha256
-            dist/goodtouchbar-0.2.0-${{ matrix.arch }}-build-manifest.txt
+            dist/0.3.0/${{ matrix.arch }}/
+            dist/goodtouchbar-0.3.0-${{ matrix.arch }}.zip
+            dist/goodtouchbar-0.3.0-${{ matrix.arch }}.zip.sha256
+            dist/goodtouchbar-0.3.0-${{ matrix.arch }}-build-manifest.txt
           if-no-files-found: error
           retention-days: 7

@@ -667,6 +667,133 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSTouchB
         tokenMonitor.snapshot.menuText
     }
 
+    func statusDetailsSnapshot(menuBarMode: Bool) -> StatusDetailsSnapshot {
+        let quota = quotaMonitor.snapshot
+        let token = tokenMonitor.snapshot
+        let workBuddy = workbuddyMonitor.snapshot
+        let metricSnapshot = metricsMonitor.snapshot
+        let quotaHasData = !quota.windows.isEmpty
+        let quotaWindows = [
+            StatusDetailsQuotaWindow(
+                title: "5 小时",
+                remainingPercent: quota.windows.first(where: { $0.label == "5小时" })?.remainingPercent,
+                resetText: quota.windows.first(where: { $0.label == "5小时" })?.resetText ?? "重置时间未知"
+            ),
+            StatusDetailsQuotaWindow(
+                title: "7 天",
+                remainingPercent: quota.windows.first(where: { $0.label == "7天" })?.remainingPercent,
+                resetText: quota.windows.first(where: { $0.label == "7天" })?.resetText ?? "重置时间未知"
+            ),
+        ]
+        let chatGPT = StatusDetailsPresentation.service(
+            name: "ChatGPT",
+            state: codexMonitor.snapshot.state.rawValue,
+            sourceTitle: codexMonitor.snapshot.title,
+            detail: codexMonitor.snapshot.detail
+        )
+        let workBuddyStatus = StatusDetailsPresentation.service(
+            name: "WorkBuddy",
+            state: workBuddy.state.rawValue,
+            sourceTitle: workBuddy.title,
+            detail: workBuddy.detail
+        )
+
+        var metrics: [StatusDetailsMetric] = []
+        if let reading = metricSnapshot.readings[MetricID.cpu.rawValue],
+           reading.isFresh(), let value = reading.value {
+            let text = String(format: "%.0f%%", value)
+            metrics.append(.init(symbol: "cpu", title: "CPU", value: text, accessibilityLabel: "CPU 使用率 \(text)"))
+        }
+        if let used = metricSnapshot.readings[MetricID.memory.rawValue],
+           used.isFresh(), let value = used.value {
+            let total = metricSnapshot.readings["memory.total"]?.value ?? 0
+            let text = total > 0
+                ? String(format: "%.1f/%.0f GB", value / 1_073_741_824, total / 1_073_741_824)
+                : String(format: "%.1f GB", value / 1_073_741_824)
+            metrics.append(.init(symbol: "memorychip", title: "内存", value: text, accessibilityLabel: "内存使用 \(text)"))
+        }
+        if let reading = metricSnapshot.readings[MetricID.cpuTemperature.rawValue],
+           reading.isFresh(), let value = reading.value {
+            let text = String(format: "%.0f°C", value)
+            metrics.append(.init(symbol: "thermometer.medium", title: "温度", value: text, accessibilityLabel: "CPU 温度 \(text)"))
+        }
+
+        let fanReading = metricSnapshot.readings[MetricID.fans.rawValue]
+        if fanReading?.isFresh() == true {
+            if metricSnapshot.fans.isEmpty {
+                metrics.append(.init(symbol: "fan", title: "风扇", value: "未检测到", accessibilityLabel: "未检测到风扇转速读数"))
+            } else {
+                let rpm = metricSnapshot.fans.map { fan in
+                    fan.actual.map { String(format: "%.0f", $0) } ?? "未知"
+                }.joined(separator: "/")
+                metrics.append(.init(symbol: "fan", title: "风扇", value: "\(rpm) RPM", accessibilityLabel: "风扇转速 \(rpm) RPM"))
+            }
+        }
+
+        let fanNote: String
+        if capabilitiesCanReadFansAsReadOnly {
+            fanNote = "风扇只读 · 只显示已采样转速；未知读数不代表没有风扇"
+        } else if deviceCapabilities.processArchitecture == "x86_64", deviceCapabilities.hostSupportsArm64 == false {
+            fanNote = "Intel 风扇读数只读 · 未采样时状态未知"
+        } else {
+            fanNote = "风扇能力未知 · 仅显示已有只读读数"
+        }
+
+        let quotaUpdatedText: String
+        if !quotaHasData {
+            quotaUpdatedText = "暂未获取数据"
+        } else {
+            quotaUpdatedText = quota.updatedAgeText.map { "更新于\($0)" } ?? "更新时间未知"
+        }
+        let tokenUpdatedText: String
+        if token.tokens == nil {
+            tokenUpdatedText = "暂未采集"
+        } else {
+            tokenUpdatedText = token.updatedAt.map { "更新于\(CodexQuotaSnapshot.ageText($0))" } ?? "更新时间未知"
+        }
+
+        return StatusDetailsSnapshot(
+            modeLabel: menuBarMode ? "菜单栏模式" : "Touch Bar 模式",
+            quotaWindows: quotaWindows,
+            quotaIsStale: quotaHasData && quota.isStale,
+            quotaAwaitingReset: quota.windows.isEmpty && quota.awaitingReset,
+            quotaUpdatedText: quotaUpdatedText,
+            tokenShortText: StatusDetailsPresentation.shortTokenText(token.tokens),
+            tokenExactText: token.tokens.map { "精确计数 \(StatusDetailsPresentation.exactTokenText($0))" } ?? "暂无精确计数",
+            tokenUpdatedText: tokenUpdatedText,
+            tokenIsStale: token.tokens != nil && token.stale,
+            chatGPT: chatGPT,
+            workBuddy: workBuddyStatus,
+            canStartWorkBuddy: StatusDetailsPresentation.canPerformWorkBuddyAction(
+                "start", state: workBuddy.state.rawValue, title: workBuddy.title,
+                commandInFlight: workbuddyMonitor.commandInFlight
+            ),
+            canUpdateWorkBuddy: StatusDetailsPresentation.canPerformWorkBuddyAction(
+                "update", state: workBuddy.state.rawValue, title: workBuddy.title,
+                commandInFlight: workbuddyMonitor.commandInFlight
+            ),
+            canStopWorkBuddy: StatusDetailsPresentation.canPerformWorkBuddyAction(
+                "stop", state: workBuddy.state.rawValue, title: workBuddy.title,
+                commandInFlight: workbuddyMonitor.commandInFlight
+            ),
+            metrics: metrics,
+            fanNote: fanNote
+        )
+    }
+
+    private var capabilitiesCanReadFansAsReadOnly: Bool {
+        deviceCapabilities.processArchitecture == "arm64" || deviceCapabilities.hostSupportsArm64 == true
+    }
+
+    func refreshStatusDetails() {
+        codexMonitor.refresh()
+        quotaMonitor.refresh()
+        workbuddyMonitor.refresh()
+        tokenMonitor.refresh()
+        agentSpeedMonitor.refresh()
+        metricsMonitor.refresh()
+    }
+
     func displayText(for key: String) -> String {
         if MetricID(rawValue: key) != nil { return metricsMonitor.snapshot.text(for: key) }
         switch key {
@@ -1751,6 +1878,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowController: MainWindowController!
     private var pomodoroStatusItem: NSStatusItem?
     private var statusItem: NSStatusItem!
+    private var statusMenu: NSMenu?
+    private var statusDetailsPopover: StatusDetailsPopoverController?
     private var healthMonitor: HealthMonitor!
     private var globalTouchBarPresenter: GlobalTouchBarPresenter?
     private var healthMenuItem: NSMenuItem!
@@ -1822,10 +1951,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.autosaveName = NSStatusItem.AutosaveName(
             "io.github.yihuirui.goodtouchbar.summary"
         )
-        statusItem.button?.title = "⚡7天 --    💰 --"
-        statusItem.button?.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        statusItem.button?.contentTintColor = NSColor.black
-        statusItem.button?.toolTip = "GoodTouchBar"
+        statusItem.button?.image = NSImage(
+            systemSymbolName: "bolt.horizontal.circle",
+            accessibilityDescription: "goodtouchbar 状态详情"
+        )
+        statusItem.button?.imagePosition = .imageOnly
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(handleStatusItemAction)
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        statusItem.button?.setAccessibilityLabel("goodtouchbar 状态详情")
+        statusItem.button?.setAccessibilityHelp("点击查看状态详情；右键打开完整菜单")
+        statusItem.button?.toolTip = "goodtouchbar · 点击查看状态详情 · 右键打开完整菜单"
 
         let menu = NSMenu()
         let openItem = menu.addItem(
@@ -1965,39 +2101,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: ""
         )
         tokenMenuItem.target = self
-        let copyStatusItem = menu.addItem(
-            withTitle: "复制当前状态",
-            action: #selector(copyCurrentStatus),
-            keyEquivalent: ""
-        )
-        copyStatusItem.target = self
-
         menu.addItem(.separator())
+        let diagnosticsParent = NSMenuItem(title: "诊断与恢复", action: nil, keyEquivalent: "")
+        let diagnosticsMenu = NSMenu(title: "诊断与恢复")
         healthMenuItem = NSMenuItem(
             title: "运行状态：检查中",
             action: nil,
             keyEquivalent: ""
         )
         healthMenuItem.isEnabled = false
-        menu.addItem(healthMenuItem)
-        let checkItem = menu.addItem(
+        diagnosticsMenu.addItem(healthMenuItem)
+        let checkItem = diagnosticsMenu.addItem(
             withTitle: "立即自检",
             action: #selector(runSelfCheck),
             keyEquivalent: "c"
         )
         checkItem.target = self
-        let reportItem = menu.addItem(
+        let reportItem = diagnosticsMenu.addItem(
             withTitle: "打开健康报告",
             action: #selector(openHealthReport),
             keyEquivalent: "h"
         )
         reportItem.target = self
-        let restoreItem = menu.addItem(
+        let restoreItem = diagnosticsMenu.addItem(
             withTitle: "从备份恢复配置…",
             action: #selector(restoreConfigurationBackup),
             keyEquivalent: ""
         )
         restoreItem.target = self
+        diagnosticsMenu.addItem(.separator())
+        let copyStatusItem = diagnosticsMenu.addItem(
+            withTitle: "复制当前状态",
+            action: #selector(copyCurrentStatus),
+            keyEquivalent: ""
+        )
+        copyStatusItem.target = self
+        diagnosticsParent.submenu = diagnosticsMenu
+        menu.addItem(diagnosticsParent)
         menu.addItem(.separator())
         let quitItem = menu.addItem(
             withTitle: "退出",
@@ -2005,7 +2145,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: "q"
         )
         quitItem.target = self
-        statusItem.menu = menu
+        statusMenu = menu
         ensureStatusBarItemsVisible()
         logStatusBarDiagnostics("launch")
 
@@ -2019,6 +2159,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.renderMenuControls()
             _ = self?.healthMonitor.refresh()
         }
+        let details = StatusDetailsPopoverController(
+            snapshot: windowController.statusDetailsSnapshot(menuBarMode: !appUsesTouchBar)
+        )
+        details.onMore = { [weak self] in self?.showFullStatusMenu() }
+        details.onWorkBuddyAction = { [weak self] command in
+            self?.windowController.controlWorkBuddyRetry(command)
+        }
+        details.onPerformanceDetails = { [weak self] in
+            self?.windowController.showMonitorSettings(showDetails: true)
+        }
+        details.onDisplaySettings = { [weak self] in self?.windowController.showMonitorSettings() }
+        details.onRefresh = { [weak self] in self?.windowController.refreshStatusDetails() }
+        statusDetailsPopover = details
         renderMenuControls()
         windowController.startCollapsed()
         globalTouchBarPresenter?.start()
@@ -2060,6 +2213,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showMonitorSettings() { windowController.showMonitorSettings() }
+
+    @objc private func handleStatusItemAction() {
+        guard let button = statusItem?.button else { return }
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showFullStatusMenu()
+        } else {
+            statusDetailsPopover?.toggle(relativeTo: button)
+        }
+    }
+
+    private func showFullStatusMenu() {
+        guard let menu = statusMenu, let button = statusItem?.button else { return }
+        statusDetailsPopover?.close()
+        if let event = NSApp.currentEvent, event.type == .rightMouseUp {
+            NSMenu.popUpContextMenu(menu, with: event, for: button)
+        } else {
+            _ = menu.popUp(
+                positioning: nil,
+                at: NSPoint(x: button.bounds.midX, y: button.bounds.minY),
+                in: button
+            )
+        }
+    }
     @objc private func showFanControl() { windowController.showFanControl() }
     @objc private func showSystemControls() { windowController.showSystemControls() }
     @objc private func installFanHelper() { windowController.installFanHelper() }
@@ -2364,13 +2540,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let windowController {
             pomodoroStatusItem?.button?.attributedTitle = windowController.pomodoroStatusBarAttributedText()
             pomodoroStatusItem?.button?.toolTip = "点击开始番茄钟 · \(windowController.pomodoroMenuTitle())"
-            statusItem?.button?.attributedTitle = windowController.statusBarSummaryAttributedText()
-            statusItem?.button?.toolTip = windowController.statusBarSummaryText()
+            statusItem?.button?.title = ""
+            statusItem?.button?.toolTip = "goodtouchbar · 点击查看状态详情 · 右键打开完整菜单"
+            statusDetailsPopover?.update(
+                windowController.statusDetailsSnapshot(menuBarMode: !appUsesTouchBar)
+            )
         } else {
             pomodoroStatusItem?.button?.title = "🍅--"
             pomodoroStatusItem?.button?.toolTip = "点击开始番茄钟"
-            statusItem?.button?.title = healthStatusIcon
-            statusItem?.button?.toolTip = healthStatusIcon
+            statusItem?.button?.title = ""
+            statusItem?.button?.toolTip = "goodtouchbar · 点击查看状态详情 · 右键打开完整菜单"
         }
         ensureStatusBarItemsVisible()
 
@@ -2395,8 +2574,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         default: icon = prefix + "!"
         }
         healthStatusIcon = icon
-        let pomodoro = appUsesTouchBar ? " · \(windowController.pomodoroMenuTitle())" : ""
-        statusItem.button?.toolTip = "\(snapshot.message)\(pomodoro) · \(windowController.quotaMenuTitle())"
+        statusItem.button?.toolTip = "goodtouchbar · \(snapshot.status) · 点击查看状态详情"
         healthMenuItem.title = "运行状态：\(snapshot.message)"
         renderMenuControls()
     }
