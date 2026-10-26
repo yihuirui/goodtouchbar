@@ -3,7 +3,7 @@
 #
 # 串行执行。风扇与传感器那套用例会拉起 python 假传感器，和编译抢 CPU 时会变慢，
 # 所以这里不用并行，也不要和 build-app.sh 同时跑。
-# （ControlsCheck 里等待传感器的地方已改成"满足即返回、最多等 3 秒"，不再依赖固定 sleep。）
+# （ControlsCheck 里等待传感器样本最多 10 秒并立即检查条件，不依赖固定 sleep。）
 set -euo pipefail
 
 SOURCE_ROOT="${0:A:h:h}"

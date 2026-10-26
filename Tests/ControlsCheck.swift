@@ -5,15 +5,19 @@ import SystemMonitoring
     static func main() async throws {
         var count = 0
         func check(_ value:Bool,_ label:String) { precondition(value,label); count += 1; print("PASS: \(label)") }
-        // 假传感器是 python 子进程，启动耗时随机器负载浮动。固定 sleep 500ms 在编译
-        // 抢占 CPU 时会偶发不够，这里改成"满足条件就立刻返回，最多等 3 秒"。
-        func waitUntil(_ label:String,_ timeout:Double = 3,_ predicate:() -> Bool) async {
-            let deadline = Date().addingTimeInterval(timeout)
-            while Date() < deadline {
-                if predicate() { return }
+        // 假传感器通过子进程响应；CI 冷启动和负载会影响首个样本的到达时间。
+        // 立即检查条件，最多等待 10 秒，并返回实际耗时供断言日志使用。
+        @discardableResult
+        func waitUntil(_ label:String,_ timeout:Double = 10,_ predicate:() -> Bool) async -> Double? {
+            let began = ProcessInfo.processInfo.systemUptime
+            let deadline = began + timeout
+            while ProcessInfo.processInfo.systemUptime < deadline {
+                if predicate() { return ProcessInfo.processInfo.systemUptime - began }
                 try? await Task.sleep(nanoseconds:50_000_000)
             }
-            print("TIMEOUT: \(label) 在 \(timeout)s 内未满足")
+            let elapsed = ProcessInfo.processInfo.systemUptime - began
+            FileHandle.standardError.write(Data("TIMEOUT: \(label) 未在 \(String(format:"%.3f",elapsed))s 内满足（上限 \(timeout)s）\n".utf8))
+            return nil
         }
         let now = Date()
         var sample = MetricsSnapshot()
@@ -132,8 +136,20 @@ import SystemMonitoring
         let coreMonitor = SystemMetricsMonitor(sensorExecutable:sensor,cpuTemperatureKeys:CoreTemperature.intelKeys)
         coreMonitor.start()
         coreMonitor.configure(keys:[MetricID.cpuTemperature.rawValue],cpuTemperatureKey:CoreTemperature.selection)
-        await waitUntil("per-core maximum") { coreMonitor.snapshot.readings[MetricID.cpuTemperature.rawValue]?.value == 92 }
-        check(coreMonitor.snapshot.readings[MetricID.cpuTemperature.rawValue]?.value == 92,"monitor maps per-core maximum into CPU metric")
+        let coreSampleWait = await waitUntil("per-core maximum") { coreMonitor.snapshot.readings[MetricID.cpuTemperature.rawValue]?.value == 92 }
+        if let coreSampleWait {
+            FileHandle.standardError.write(Data("INFO: per-core maximum fixture sample arrived in \(String(format:"%.3f",coreSampleWait))s\n".utf8))
+        } else {
+            let metric = coreMonitor.snapshot.readings[MetricID.cpuTemperature.rawValue]
+            let metricValue = metric?.value.map { String($0) } ?? "nil"
+            let coreReadings = coreMonitor.temperatureReadings.sorted { $0.key < $1.key }.map {
+                "\($0.key)=\($0.value.value.map { String($0) } ?? "nil")"
+            }.joined(separator:", ")
+            let requests = (try? String(contentsOf:requestLog,encoding:.utf8))?.trimmingCharacters(in:.whitespacesAndNewlines) ?? "<unavailable>"
+            let diagnostic = "DIAGNOSTIC: sensorError=\(coreMonitor.snapshot.sensorError ?? "nil"); cpuMetric=\(metricValue), source=\(metric?.source ?? "nil"); coreReadings=[\(coreReadings)]; requests=[\(requests)]\n"
+            FileHandle.standardError.write(Data(diagnostic.utf8))
+        }
+        check(coreSampleWait != nil && coreMonitor.snapshot.readings[MetricID.cpuTemperature.rawValue]?.value == 92,"monitor maps per-core maximum into CPU metric")
         check(coreMonitor.snapshot.readings["cpu.coreAverage"]?.value == 86 && coreMonitor.snapshot.readings["cpu.coreCount"]?.value == 2,"monitor retains mean and valid count")
         let requests = try String(contentsOf:requestLog).split(separator:"\n").compactMap { try? JSONDecoder().decode(SensorRequest.self,from:Data($0.utf8)) }
         check(requests.last?.temperatureKeys.contains("TC1C") == true && requests.last?.temperatureKeys.contains("TC0E") == false,"compact core mode requests cores without diode fallback")
